@@ -9,6 +9,14 @@ class DrainLogParser {
         const defaultSpecialChars = "#ˆ$’*+,/<=>@_`'‘~"
         this.specialChars = drainSettings.defaultSpecialChars === undefined ? defaultSpecialChars : drainSettings.defaultSpecialChars
 
+        const defaultVarMarker = '§'
+        this.varMarker = drainSettings.varMarker === undefined ? defaultVarMarker : drainSettings.varMarker
+
+        const defaultLowerCase = true 
+        this.lowerCaseAllLines = drainSettings.setLowerCase === undefined ? defaultLowerCase : drainSettings.setLowerCase
+
+        this.logGroupStore = {}
+
     }
 
     preProcessLogLine(logline) 
@@ -54,31 +62,41 @@ class DrainLogParser {
 
         const firstToken = tokenizedLogline[0]
         const lastToken = tokenizedLogline[tokenizedLogline.length - 1]
-        let splitToken = null;
 
         const firstTokenContainsNum = this.tokenContainsDigit(firstToken)
         const lastTokenContainsNum = this.tokenContainsDigit(lastToken)
         const firstTokenContainSpecialChar = this.tokenContainsSpecialChars(firstToken) 
         const lastTokenContainSpecialChar = this.tokenContainsSpecialChars(lastToken) 
 
-        if (firstTokenContainsNum && lastTokenContainsNum)
-        {
-            if (firstTokenContainSpecialChar && lastTokenContainSpecialChar)
-            {
-                splitToken = null;
-            }
-            else 
-            {
-                splitToken = firstTokenContainSpecialChar ? lastToken : firstToken
-            }
-        } 
-        else
-        {
-            splitToken = firstTokenContainsNum ? lastToken : firstToken 
+        if (firstTokenContainsNum && lastTokenContainsNum) {return null}
+        else if (!firstTokenContainsNum && !lastTokenContainsNum) {
+            return firstTokenContainSpecialChar && !lastTokenContainSpecialChar ? lastToken : firstToken
         }
+        else {return !firstTokenContainsNum ? firstToken : lastToken}
+
+    }
+
+    calcSimilarity(loglineTokens, templateTokens) 
+    {
+        var numEqualTokens = 0
+        loglineTokens.forEach((token1, index) => {
+            let token2 = templateTokens[index]
+            let checkVarToken = token2 === this.varMarker
+            let sameToken = token1 === token2 
+            numEqualTokens = !checkVarToken && sameToken ? numEqualTokens + 1 : numEqualTokens
+          });
+        const numNonVarTokens = templateTokens.filter(it => it != this.varMarker).length 
+        console.log(numNonVarTokens)
+        const similarity = numEqualTokens/numNonVarTokens
+        return similarity
+
+    }
+
+    addLogline(logline) 
+    {
+        logline = this.setLowerCase ? logline.toLowerCase() : logline
 
 
-        return splitToken
 
     }
 
@@ -91,10 +109,13 @@ const drainSettings =
     'preProcessRegex': [{'regex': /NodeId\d/, 'replacementString': 'nodeId'}]
 }
 logParserDrain = new DrainLogParser(drainSettings)
-logParserDrain.tokenContainsSpecialChars('bajs')
+const inputTokenizedLogline = ['This', 'is', 'my', 'message', 'right']
+const inputTokenizedTemplate = ['This', '*', 'a', 'message', 'right']
+//console.log(logParserDrain.calcSimilarity(inputTokenizedLogline, inputTokenizedTemplate))
 
 
-
+// SO I should store everything as
+// {'Length_First:Token1_Group1': {'Template': ..., 'SimilarityThres': ..., 'LogLines': ...}}
 
 
 
