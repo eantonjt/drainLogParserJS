@@ -13,7 +13,7 @@ test('Verify first token can be chosen', () => {
     logParserDrain = new DrainLogParser(drainSettings)
 
     const inputTokenizedLogline = ['This', 'is', 'my', 'message']
-    const expectedNumOutput = 'This'
+    const expectedNumOutput = 'First:This'
 
     const observedSplitToken = logParserDrain.obtainSplitToken(inputTokenizedLogline)
 
@@ -30,7 +30,7 @@ test('Verify last token can be chosen when first contains digit', () => {
     logParserDrain = new DrainLogParser(drainSettings)
 
     const inputTokenizedLogline = ['Th5s', 'is', 'my', 'message']
-    const expectedNumOutput = 'message'
+    const expectedNumOutput = 'Last:message'
 
     const observedSplitToken = logParserDrain.obtainSplitToken(inputTokenizedLogline)
 
@@ -42,13 +42,14 @@ test('Verify null token returned when both contains digits', () => {
 
     const drainSettings = 
     {
-        'defaultSpecialChars': "#ˆ$’*+,/<=>@_`'‘~"
+        'defaultSpecialChars': "#ˆ$’*+,/<=>@_`'‘~",
+        'numMarker': '§'
     }
     
     logParserDrain = new DrainLogParser(drainSettings)
 
     const inputTokenizedLogline = ['Th5s', 'is', 'my', 'mes6age']
-    const expectedNumOutput = null
+    const expectedNumOutput = '§'
 
     const observedSplitToken = logParserDrain.obtainSplitToken(inputTokenizedLogline)
 
@@ -65,7 +66,7 @@ test('Verify second token returned when first contain special char', () => {
     logParserDrain = new DrainLogParser(drainSettings)
 
     const inputTokenizedLogline = ['Th@s', 'is', 'my', 'message']
-    const expectedNumOutput = 'message'
+    const expectedNumOutput = 'Last:message'
 
     const observedSplitToken = logParserDrain.obtainSplitToken(inputTokenizedLogline)
 
@@ -82,7 +83,7 @@ test('Verify first token returned when both contain special char and no digits',
     logParserDrain = new DrainLogParser(drainSettings)
 
     const inputTokenizedLogline = ['Th@s', 'is', 'my', 'mess_age']
-    const expectedNumOutput = 'Th@s'
+    const expectedNumOutput = 'First:Th@s'
 
     const observedSplitToken = logParserDrain.obtainSplitToken(inputTokenizedLogline)
 
