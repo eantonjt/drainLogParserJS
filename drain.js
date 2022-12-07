@@ -191,6 +191,34 @@ class DrainLogParser {
 
     }
 
+    loglineCanBeAddedToPreviousGroup(logline) 
+    {
+        const prevKey = this.previousTemplateGroupKey
+        const previousTemplate = this.logTemplateGroupStore[prevKey]['Template']
+        const previousSimilarityThres = this.logTemplateGroupStore[prevKey]['SimilarityThres']
+        const tokenizedLogline = this.tokenizeLogline(logline)
+        const tokenizedTemplate = this.tokenizeLogline(previousTemplate)
+        const currSimilarity = this.calcSimilarity(tokenizedLogline, tokenizedTemplate)
+        const loglineCanBeAddedToPreviousGroup = currSimilarity > previousSimilarityThres
+        return loglineCanBeAddedToPreviousGroup
+
+    }
+
+    compareCachedGroupFirst(logline, numTokens)
+    {
+        if (numTokens == this.numTokensOfPreviousLogline && this.previousTemplateGroupKey != null)
+        {
+            if (this.loglineCanBeAddedToPreviousGroup(logline)) 
+            {
+                this.updateTemplateGroup(this.previousTemplateGroupKey, logline)                
+                return true 
+            }
+
+        } 
+        return false 
+
+    }
+
     addLogline(logline) 
     {
         
@@ -201,7 +229,12 @@ class DrainLogParser {
         let splitToken = this.obtainSplitToken(tokenizedLogline)
         let DAGInitialStepsMarker = [numTokens.toString(), splitToken].join(this.DAGSplitMarker)
 
-        // So we can have a cache mechanism here?
+        if (this.cacheEnabled) 
+        {
+            const loglineWasAddedToCachedGroup = this.compareCachedGroupFirst(logline, numTokens) 
+            if (loglineWasAddedToCachedGroup) { return }
+        }
+        
 
         if (this.templateGroupExists(DAGInitialStepsMarker)) {
             
@@ -228,6 +261,8 @@ class DrainLogParser {
             const groupKey = [DAGInitialStepsMarker, newGroupMarker].join(this.DAGSplitMarker)
             this.createNewTemplateGroup(groupKey, logline)
         }
+
+        return
 
     }
 
