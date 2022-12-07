@@ -21,6 +21,12 @@ class DrainLogParser {
         const defaultLowerCase = true 
         this.lowerCaseAllLines = drainSettings.setLowerCase === undefined ? defaultLowerCase : drainSettings.setLowerCase
 
+        const defaultCacheEnabled = true 
+        this.cacheEnabled = drainSettings.cacheEnabled === undefined ? defaultCacheEnabled : drainSettings.cacheEnabled
+
+        this.previousTemplateGroupKey = null 
+        this.numTokensOfPreviousLogline = null
+
         this.logTemplateGroupStore = {}
 
     }
@@ -92,7 +98,6 @@ class DrainLogParser {
             numEqualTokens = !checkVarToken && sameToken ? numEqualTokens + 1 : numEqualTokens
           });
         const numNonVarTokens = templateTokens.filter(it => it != this.varMarker).length 
-        console.log(numNonVarTokens)
         const similarity = numEqualTokens/numNonVarTokens
         return similarity
 
@@ -116,11 +121,11 @@ class DrainLogParser {
 
     }
 
-    createNewTemplateGroup(DAGInitialStepsMarker, logline, groupMarker)
+    createNewTemplateGroup(templateGroupKey, logline)
     {
-        const templateGroupKey = [DAGInitialStepsMarker, groupMarker].join(this.DAGSplitMarker)
+
         const similarityThres = this.initializeSimilarityThres(logline)
-        const initialGroupInfo = {'Template': logline, 'SimilarityThres': similarityThres}
+        const initialGroupInfo = {'Template': logline, 'SimilarityThres': similarityThres, 'OriginalSimilarityThres': similarityThres}
         this.logTemplateGroupStore[templateGroupKey] = initialGroupInfo
 
     }
@@ -133,9 +138,9 @@ class DrainLogParser {
 
     }
 
-    addLoglineToTemplateGroup(DAGInitialStepsMarker, logline) 
+    findMostSimilarTemplateGroup(logline, associatedTemplateGroupKeys) 
     {
-        const associatedTemplateGroupKeys = this.obtainAssociatedTemplateGroupKeys(DAGInitialStepsMarker)
+
         var bestMatchingGroupKey = null
         var highestSimilarityValue = -1
         associatedTemplateGroupKeys.forEach(currKey => 
@@ -150,17 +155,39 @@ class DrainLogParser {
                 bestMatchingGroupKey = currSimilarity >= highestSimilarityValue ? currKey : bestMatchingGroupKey 
 
             })
-        if (bestMatchingGroupKey === null)
+
+        return bestMatchingGroupKey
+
+    }
+
+    newSimilarityThreshold(orgSimThres, tokenizedLogline) 
+    {
+
+        const numDigits = tokenizedLogline.filter(it => this.tokenContainsDigit(it)).length 
+        const base = Math.max(2, numDigits + 1)
+        const numVarTokens = tokenizedLogline.filter(it => this.varMarker).length 
+        const logBaseNumVarTokens = Math.log(base) / Math.log(numVarTokens + 1);
+        const newSimThres = Math.min(1, orgSimThres + 0.5*logBaseNumVarTokens)
+        return newSimThres
+    }
+
+    updateTemplateGroup(groupKey, logline) 
+    {
+
+        let currTemplate = this.logTemplateGroupStore[groupKey]['Template']
+        let tokenizedLogline = this.tokenizeLogline(logline)
+        let tokenizedTemplate = this.tokenizeLogline(currTemplate)
+        const newTokenizedTemplate = tokenizedLogline.map((it,ind) => 
         {
-            const newGroupNumber = associatedTemplateGroupKeys.length
-            this.createNewTemplateGroup(DAGInitialStepsMarker, logline, 'Group' + newGroupNumber.toString())
-        } 
-        else
-        {
-            // CONTINUE HERE, DOES THE FUNCTION NEED TO BE RENAMED?
-            // THEN CONTIUE IN ADDLOGLINE BELOW
-        }
-        
+           let updateToken = it ===  tokenizedTemplate[ind] ? it : this.varMarker
+           return updateToken
+           
+        })
+        let newTemplate = newTokenizedTemplate.join(' ')
+        this.logTemplateGroupStore[groupKey]['Template'] = newTemplate
+        const orgSimThres = this.logTemplateGroupStore[groupKey]['OriginalSimilarityThres']
+        const newSimThres = this.newSimilarityThreshold(orgSimThres, newTokenizedTemplate) 
+        this.logTemplateGroupStore[groupKey]['SimilarityThres'] = newSimThres
 
     }
 
@@ -174,21 +201,33 @@ class DrainLogParser {
         let splitToken = this.obtainSplitToken(tokenizedLogline)
         let DAGInitialStepsMarker = [numTokens.toString(), splitToken].join(this.DAGSplitMarker)
 
+        // So we can have a cache mechanism here?
+
         if (this.templateGroupExists(DAGInitialStepsMarker)) {
-            // Retrieve all the template keys and find the one with the highest similarity
-            //this.addLoglineToTemplateGroup
+            
+            const associatedTemplateGroupKeys = this.obtainAssociatedTemplateGroupKeys(DAGInitialStepsMarker)
+            const mostSimilarGroup = this.findMostSimilarTemplateGroup(logline, associatedTemplateGroupKeys) 
+            if (mostSimilarGroup === null) 
+            { 
+                
+                const newGroupNumber = associatedTemplateGroupKeys.length + 1
+                const groupKey = [DAGInitialStepsMarker, 'Group' + newGroupNumber].join(this.DAGSplitMarker)
+                this.createNewTemplateGroup(groupKey, logline)
+
+            }
+            else
+            {
+                
+                this.updateTemplateGroup(mostSimilarGroup, logline)
+
+            }
         } 
         else 
         {
             const newGroupMarker = 'Group1'
-            this.createNewTemplateGroup(DAGInitialStepsMarker, logline, newGroupMarker)
+            const groupKey = [DAGInitialStepsMarker, newGroupMarker].join(this.DAGSplitMarker)
+            this.createNewTemplateGroup(groupKey, logline)
         }
-
-
-
-
-
-
 
     }
 
@@ -203,6 +242,17 @@ const drainSettings =
 logParserDrain = new DrainLogParser(drainSettings)
 const inputTokenizedLogline = ['This', 'is', 'my', 'message', 'right']
 const inputTokenizedTemplate = ['This', '*', 'a', 'message', 'right']
+
+const inputLogline1 = 'Where lives the lord?'
+const inputLogline2 = 'Where did you sleep?'
+const inputLogline3 = 'Where is my cat?'
+
+
+logParserDrain.addLogline(inputLogline1)
+logParserDrain.addLogline(inputLogline2)
+logParserDrain.addLogline(inputLogline3)
+
+//console.log(logParserDrain.logTemplateGroupStore)
 //console.log(logParserDrain.calcSimilarity(inputTokenizedLogline, inputTokenizedTemplate))
 
 
