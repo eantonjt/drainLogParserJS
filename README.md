@@ -1,6 +1,6 @@
 ## DrainJavascript
 
-This repo contains an implementation of the logparser Drain LINK for Javascript.
+This repo contains an implementation of the logparser [Drain](https://arxiv.org/abs/1806.04356) for Javascript.
 This is my own implementation and is this not official.
 
 ## Usage
