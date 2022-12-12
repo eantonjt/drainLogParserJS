@@ -1,7 +1,7 @@
 
 
 class DrainLogParser {
-    constructor(drainSettings) {
+    constructor(drainSettings = {}) {
 
         const defaultRegex = []
         this.preProcessRegex = drainSettings.preProcessRegex === undefined ? defaultRegex : drainSettings.preProcessRegex
@@ -236,7 +236,6 @@ class DrainLogParser {
         const groupTemplate = mostSimilarGroup === null ? null : this.getTemplateOfGroup(mostSimilarGroup)
         return groupTemplate
 
-
     }
 
     obtainInitialDAGNodes(logline)
@@ -249,7 +248,10 @@ class DrainLogParser {
         let splitToken = this.obtainSplitToken(tokenizedLogline)
         let DAGInitialStepsMarker = [numTokens.toString(), splitToken].join(this.DAGSplitMarker)
         return DAGInitialStepsMarker
+    
     }
+
+
 
     addLogline(logline) 
     {
@@ -296,38 +298,5 @@ class DrainLogParser {
 
 
 }
-
-
-
-// I NEED RETRIEVE LOGTEMPLATES AS WELL
-// SO A LOGLINE CAN BE MATCHED WITH A TEMPLATE
-// AND SOME PRINT FUNCTION MAYBE?
-// IF WE GROUP TEMPLATE GROUPS THEN WE CAN JUST PRINT THE GROUP WHEN A LOGLINE IS MATCHED THERE?
-
-const drainSettings = 
-{
-    'preProcessRegex': [{'regex': /NodeId\d/, 'replacementString': 'nodeId'}]
-}
-logParserDrain = new DrainLogParser(drainSettings)
-const inputTokenizedLogline = ['This', 'is', 'my', 'message', 'right']
-const inputTokenizedTemplate = ['This', '*', 'a', 'message', 'right']
-
-const inputLogline1 = 'Where lives the lord?'
-const inputLogline2 = 'Where did you sleep?'
-const inputLogline3 = 'Where is my cat?'
-
-
-logParserDrain.addLogline(inputLogline1)
-logParserDrain.addLogline(inputLogline2)
-const myGroup = logParserDrain.addLogline(inputLogline3)
-console.log(myGroup)
-//console.log(logParserDrain.logTemplateGroupStore)
-//console.log(logParserDrain.calcSimilarity(inputTokenizedLogline, inputTokenizedTemplate))
-
-
-// SO I should store everything as
-// {'Length_First:Token1_Group1': {'Template': ..., 'SimilarityThres': ..., 'LogLines': ...}}
-
-
 
 module.exports = { DrainLogParser };
